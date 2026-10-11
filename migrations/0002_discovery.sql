@@ -1,0 +1,14 @@
+ALTER TABLE items ADD COLUMN author_id TEXT;
+ALTER TABLE items ADD COLUMN discovery TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE items ADD COLUMN view_count INTEGER;
+ALTER TABLE items ADD COLUMN like_count INTEGER;
+ALTER TABLE items ADD COLUMN reply_count INTEGER;
+ALTER TABLE items ADD COLUMN repost_count INTEGER;
+ALTER TABLE items ADD COLUMN comment_count INTEGER;
+ALTER TABLE items ADD COLUMN metrics_at TEXT;
+ALTER TABLE items ADD COLUMN duration_seconds INTEGER;
+ALTER TABLE items ADD COLUMN content_kind TEXT NOT NULL DEFAULT 'news';
+ALTER TABLE items ADD COLUMN classification_reason TEXT;
+ALTER TABLE items ADD COLUMN official_source INTEGER NOT NULL DEFAULT 0;
+CREATE INDEX items_views ON items(source, view_count DESC, sort_at DESC, id DESC);
+CREATE INDEX items_likes ON items(source, like_count DESC, sort_at DESC, id DESC);

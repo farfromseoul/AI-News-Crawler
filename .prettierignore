@@ -1,0 +1,8 @@
+node_modules
+dist
+.tools
+.cache
+.wrangler
+test-results
+playwright-report
+package-lock.json

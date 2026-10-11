@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-signal-collector",
+  "main": "workers/collector/index.ts",
+  "compatibility_date": "2025-10-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ai-news",
+      "database_id": "00000000-0000-0000-0000-000000000001",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "triggers": { "crons": ["0 0 * * *"] },
+  "vars": {
+    "X_DAILY_LIMIT": "0",
+    "X_MONTHLY_LIMIT": "0",
+    "YOUTUBE_QUERIES": "AI 에이전트|생성형 AI|LLM|AI coding",
+    "YOUTUBE_DAILY_SEARCH_LIMIT": "16",
+    "X_OFFICIAL_AUTHOR_IDS": "",
+  },
+  "observability": { "enabled": true },
+}
