@@ -1,4 +1,3 @@
-import { bootstrapCron, bootstrapDate, bootstrapSource } from '../../packages/domain/bootstrap';
 import { collectorCrons, scheduledJob } from '../../packages/domain/schedule';
 import { engineeringFeeds, conferences } from '../../packages/domain/catalog';
 import { RssAdapter, type FeedSource } from '../../packages/sources/rss';
@@ -220,18 +219,6 @@ export async function collectScheduled(env: CollectorEnv, time: number) {
 }
 export default {
   async scheduled(event: ScheduledController, env: CollectorEnv) {
-    if (event.cron === bootstrapCron) {
-      const source = bootstrapSource(event.scheduledTime);
-      if (!source) return;
-      // Reserve once before collection, even if the platform redelivers this scheduled event.
-      const claim = await env.DB.prepare(
-        'INSERT OR IGNORE INTO usage_budget(source,period,reserved) VALUES(?,?,1)',
-      )
-        .bind(`bootstrap:${source}`, bootstrapDate)
-        .run();
-      if (claim.meta.changes) await collectSource(env, source);
-      return;
-    }
     // Ignore obsolete cron events during configuration propagation; never fall back to a batch.
     if (collectorCrons.includes(event.cron)) await collectScheduled(env, event.scheduledTime);
   },

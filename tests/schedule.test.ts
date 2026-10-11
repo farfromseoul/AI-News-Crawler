@@ -33,23 +33,3 @@ it('keeps deployed crons aligned with the shared schedule and tolerates weekly f
   expect(staleHours('aws')).toBe(98);
   expect(staleHours('cncf')).toBe(26);
 });
-
-it('targets exactly eight RSS feeds on the requested date and never repeats next year', async () => {
-  const { bootstrapSource } = await import('../packages/domain/bootstrap');
-  const found = Array.from({ length: 8 }, (_, i) =>
-    bootstrapSource(Date.UTC(2026, 9, 11, 13, 50 + i)),
-  );
-  expect(found).toEqual([
-    'cncf',
-    'thenewstack',
-    'infoq',
-    'aws',
-    'kubernetes',
-    'cloudflare',
-    'martinfowler',
-    'bytebytego',
-  ]);
-  expect(bootstrapSource(Date.UTC(2026, 9, 11, 13, 49))).toBeUndefined();
-  expect(bootstrapSource(Date.UTC(2026, 9, 11, 13, 58))).toBeUndefined();
-  expect(bootstrapSource(Date.UTC(2027, 9, 11, 13, 50))).toBeUndefined();
-});
