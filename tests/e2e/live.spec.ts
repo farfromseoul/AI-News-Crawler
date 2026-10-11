@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { sources } from '../../packages/domain/types';
 
 test('real local Worker serves D1 status and feed to the page', async ({ page, request }) => {
   await expect
@@ -10,12 +11,12 @@ test('real local Worker serves D1 status and feed to the page', async ({ page, r
       }
     })
     .toBe(200);
-  const response = await request.get('/api/items?limit=18');
+  const response = await request.get('/api/items?section=ai&limit=18');
   expect(response.status()).toBe(200);
   const feed = await response.json();
   expect(Array.isArray(feed.items)).toBe(true);
   const status = await request.get('/api/sources/status');
-  expect((await status.json()).sources).toHaveLength(4);
+  expect((await status.json()).sources).toHaveLength(sources.length);
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.setViewportSize({ width: 1440, height: 1000 });

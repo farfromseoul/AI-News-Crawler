@@ -32,6 +32,12 @@ app.get('/api/items', async (c) => {
   c.header('Cache-Control', 'public, max-age=60');
   return c.json(result);
 });
+app.get('/api/stats', async (c) => {
+  const parsed = querySchema.safeParse(c.req.query());
+  if (!parsed.success) return c.json({ error: 'invalid_query' }, 400);
+  c.header('Cache-Control', 'public, max-age=60');
+  return c.json(await new NewsRepository(c.env.DB).stats(parsed.data));
+});
 app.get('/api/items/:id', async (c) => {
   const item = await new NewsRepository(c.env.DB).get(c.req.param('id'));
   return item ? c.json(item) : c.json({ error: 'not_found' }, 404);
