@@ -180,3 +180,29 @@
 - 사용자 토큰 저장 확인 후 대상 저장소 접근과 push 권한, main 이력 일치 확인.
 - 토큰은 로컬 인증용이며 GitHub Actions Secrets와 용도가 다름을 설명. 토큰 파일은 Git 제외 경로에 유지하며 원문 출력하지 않음.
 - 요청된 feature 브랜치 push와 main 대상 PR 게시 진행. 병합 및 Cloudflare 배포는 범위에 포함하지 않음.
+
+### 2026-10-11 — Cloudflare 배포 절차 안내
+
+- 요청: PR 병합 후 Cloudflare 배포 절차 설명.
+- 확인: 현재 GitHub Actions Deploy Cloudflare는 수동 실행, production 환경의 API 토큰/계정 ID 필요. 두 Wrangler 설정에 같은 실제 D1 ID를 넣어야 함.
+- 안내: D1 생성 → 설정 변경 반영 → 배포 인증 등록 → main 배포 → collector YouTube secret 설정 → URL/예약 수집 확인. 로컬 DB와 .dev.vars는 원격에 자동 복사되지 않음.
+- 실행 범위: 절차 안내만 수행, 실제 리소스 생성·배포는 하지 않음.
+
+### 2026-10-11 — 전체 배포 절차 및 무료 플랜 제약 확인
+
+- 요청: Cloudflare 전체 배포 절차 안내.
+- 확인: Workers Free는 실행당 외부 subrequest 50개 제한. 현재 HN 후보 100개 조회를 포함한 통합 collector는 그대로 무료 운영 가능하다고 보장할 수 없음. 앞선 무료 시작 안내에 이 제약을 보완함.
+- 배포 전 필요: 무료 한도에 맞게 수집 작업 분할/요청 수 제한 및 CPU 예산 검증. D1 생성·인증 준비는 병행 가능하나 collector 운영 검증 전 완료로 간주하지 않음.
+- 실제 배포나 유료 플랜 전환은 수행하지 않음.
+
+### 2026-10-11 — 운영 D1 식별자 반영
+
+- 사용자 제공 DB: ai-sig, 9efaed65-69cc-4bc6-b11e-da5bb4d43458.
+- 두 Worker와 로컬/원격 마이그레이션 명령 및 README 갱신. preview_database_id로 기존 로컬 식별자 유지. 원격 배포·DB 변경은 수행하지 않음.
+
+### 2026-10-11 — Cloudflare 배포 준비 PR
+
+- 사용자 확인: GitHub 환경 및 시크릿 등록 완료. 실제 비밀 값은 조회하지 않음.
+- 완료: ai-sig 설정 반영, HN 조회 30개/재시도 없음, 자동 리다이렉트 차단으로 전체 외부 호출 최대 49회 제한.
+- 검증: 타입 검사·빌드와 단위/D1 테스트 23개 통과. 운영 CPU 사용량은 배포 후 검증 필요.
+- main 기준 feature/cloudflare-deploy-setup PR 준비. 원격 배포 및 병합은 수행하지 않음.

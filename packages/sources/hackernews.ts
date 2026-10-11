@@ -22,7 +22,7 @@ export class HackerNewsAdapter implements SourceAdapter {
   source = 'hackernews' as const;
   async fetch({ since, maxItems }: FetchInput) {
     const get = async (path: string) =>
-      (await request(`https://hacker-news.firebaseio.com/v0/${path}.json`)).json();
+      (await request(`https://hacker-news.firebaseio.com/v0/${path}.json`, {}, 0)).json();
     const [fresh, top] = await Promise.all(
       ['newstories', 'topstories'].map(async (p) => idsSchema.parse(await get(p))),
     );
@@ -33,11 +33,11 @@ export class HackerNewsAdapter implements SourceAdapter {
           .filter((id): id is number => id !== undefined),
       ),
     ];
-    const selected = candidates.slice(0, Math.min(maxItems, 100));
+    const selected = candidates.slice(0, Math.min(maxItems, 30));
     const items: SourceItem[] = [];
     let failures = 0;
     const now = new Date().toISOString();
-    // Five concurrent reads, at most 100 item lookups per run.
+    // Five concurrent reads, at most 30 item lookups per run.
     for (let offset = 0; offset < selected.length; offset += 5) {
       const results = await Promise.allSettled(
         selected.slice(offset, offset + 5).map(async (id) => {

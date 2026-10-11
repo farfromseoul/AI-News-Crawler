@@ -7,7 +7,11 @@ export async function request(url: string, init: RequestInit = {}, retries = 2):
   for (let attempt = 0; ; attempt++) {
     let response: Response;
     try {
-      response = await fetch(url, { ...init, signal: AbortSignal.timeout(12000) });
+      response = await fetch(url, {
+        ...init,
+        redirect: 'error',
+        signal: AbortSignal.timeout(12000),
+      });
     } catch {
       if (attempt >= retries) throw new SourceError('network_error');
       await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));

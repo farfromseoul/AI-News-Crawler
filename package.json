@@ -15,7 +15,7 @@
     "format": "prettier --write apps packages workers scripts tests '*.ts' '*.json' '*.jsonc' '.github/workflows/*.yml'",
     "test": "vitest run",
     "check": "npm run typecheck && npm test && npm run build",
-    "db:migrate": "wrangler d1 migrations apply ai-news --local --persist-to .wrangler/state",
+    "db:migrate": "wrangler d1 migrations apply ai-sig --local --persist-to .wrangler/state",
     "collect": "tsx scripts/collect.ts",
     "test:e2e": "playwright test",
     "deploy:api": "wrangler deploy --config wrangler.jsonc",

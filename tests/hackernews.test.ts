@@ -47,3 +47,16 @@ it('respects the lookup cap and reports partial results', async () => {
   expect((await new HackerNewsAdapter().fetch({ since: '', maxItems: 1 })).complete).toBe(false);
   expect(mock).toHaveBeenCalledTimes(3);
 });
+
+it('caps external calls at 32 even when item requests fail', async () => {
+  const mock = vi.fn(async (url: string) =>
+    url.includes('stories')
+      ? new Response(JSON.stringify(Array.from({ length: 100 }, (_, i) => i + 1)))
+      : new Response('', { status: 503 }),
+  );
+  vi.stubGlobal('fetch', mock);
+  await expect(new HackerNewsAdapter().fetch({ since: '', maxItems: 250 })).rejects.toThrow(
+    'upstream_error',
+  );
+  expect(mock).toHaveBeenCalledTimes(32);
+});
