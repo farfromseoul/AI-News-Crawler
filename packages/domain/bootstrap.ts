@@ -1,5 +1,5 @@
-// Temporary production bootstrap. UTC corresponds to 2026-10-11 22:40–22:47 KST.
-export const bootstrapCron = '40-47 13 11 10 *';
+// Temporary production bootstrap. UTC corresponds to 2026-10-11 22:50–22:57 KST.
+export const bootstrapCron = '50-57 13 11 10 *';
 export const bootstrapDate = '2026-10-11';
 const bootstrapSources = [
   'cncf',
@@ -19,5 +19,5 @@ export function bootstrapSource(time: number) {
     date.getUTCHours() !== 13
   )
     return;
-  return bootstrapSources[date.getUTCMinutes() - 40];
+  return bootstrapSources[date.getUTCMinutes() - 50];
 }
