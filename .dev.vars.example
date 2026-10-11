@@ -1,0 +1,12 @@
+# Collector only. Never expose these to the web bundle.
+YOUTUBE_API_KEY=
+YOUTUBE_QUERIES=AI 에이전트|생성형 AI|LLM|AI coding
+# Maximum reserved search requests per UTC day, shared by manual and scheduled runs.
+YOUTUBE_DAILY_SEARCH_LIMIT=16
+X_BEARER_TOKEN=
+X_QUERY=(OpenAI OR Anthropic OR LLM OR "AI agent" OR 인공지능) -is:retweet -is:reply
+# Optional numeric account IDs confirmed by the owner. Empty means no official badge.
+X_OFFICIAL_AUTHOR_IDS=
+# X remains disabled until all limits and credentials are set.
+X_DAILY_LIMIT=0
+X_MONTHLY_LIMIT=0
