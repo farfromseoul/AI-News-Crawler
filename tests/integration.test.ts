@@ -350,3 +350,33 @@ it('ignores retired bootstrap crons without DB or external calls', async () => {
   }
   expect(prepare).not.toHaveBeenCalled();
 });
+
+it('matches real D1 responses to the public API contracts', async () => {
+  const { feedResponseSchema, feedStatsSchema, sourceResponseSchema, newsItemSchema } =
+    await import('../packages/contracts/news');
+  const env = { DB: db } as any;
+  for (const [path, schema] of [
+    ['/api/items', feedResponseSchema],
+    ['/api/stats', feedStatsSchema],
+    ['/api/sources/status', sourceResponseSchema],
+  ] as const) {
+    const response = await app.request(path, {}, env);
+    expect(response.status).toBe(200);
+    schema.parse(await response.json());
+  }
+  const response = await app.request('/api/items', {}, env);
+  const { items } = feedResponseSchema.parse(await response.json());
+  expect(items.length).toBeGreaterThan(0);
+  const detail = await app.request('/api/items/' + encodeURIComponent(items[0].id), {}, env);
+  expect(detail.status).toBe(200);
+  expect(newsItemSchema.parse(await detail.json())).toEqual(items[0]);
+  const empty = await app.request('/api/items?q=nonexistent-unique-contract-query', {}, env);
+  expect(feedResponseSchema.parse(await empty.json())).toEqual({
+    items: [],
+    total: 0,
+    nextCursor: null,
+  });
+  const missing = await app.request('/api/items/nonexistent-contract-id', {}, env);
+  expect(missing.status).toBe(404);
+  expect(await missing.json()).toEqual({ error: 'not_found' });
+});

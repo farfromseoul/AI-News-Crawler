@@ -319,3 +319,22 @@ Wrangler Cron은 `0 0-5 * * *`, `0 6-8,11 * * TUE,FRI`, `0 9-10 * * SUN`. schedu
 - DB 스키마 변경 없음. 기존 bootstrap 예약 기록은 보존.
 - 검증: 타입검사·빌드, 단위/D1 테스트33개, 스케줄러3개 통과. 제거된 Cron 이벤트는 DB/외부 호출 없이 무시.
 - 운영 반영은 병합 및 배포 후이며 과금0원을 보장하는 설정은 아님.
+
+
+### 2026-10-12 — MCP 활용 설계 문서
+
+[MCP_GUIDE.md](./MCP_GUIDE.md)에 기존 조회 API를 활용하는 로컬 stdio MCP와 후속 Cloudflare 원격 MCP 방안을 정리했다. 첫 범위는 뉴스 검색·상세·수집 상태의 읽기 전용 도구다. 요약은 연결된 AI가 수행하며 자동 전달은 별도 에이전트/스케줄러 범위다. 설계 제안만 추가했고 코드·DB·정기 수집·운영 배포는 변경하지 않았다.
+
+### 2026-10-12 — OpenAPI 선행·MCP 후속 구축 계획
+
+- [OPENAPI_SWAGGER_PLAN.md](./OPENAPI_SWAGGER_PLAN.md): 공통 계약 기반 OpenAPI 생성, /openapi.json 및 /api/docs, 기존 응답 호환·계약 검증 계획.
+- [MCP_SERVER_PLAN.md](./MCP_SERVER_PLAN.md): 같은 저장소에서 공통 도구와 NewsReader를 공유하고 로컬 HTTP 어댑터·원격 D1 어댑터 분리. 원격은 별도 Worker 배포 계획.
+- 순서: API 계약·Swagger 검증 후 로컬 MCP, 이후 인증된 원격 MCP. DB·수집 스케줄 변경은 계획하지 않음.
+- 이번 작업은 문서 작성만 수행했으며 구현·배포 상태 변경 없음.
+
+### 2026-10-12 — OpenAPI·Swagger 구현
+
+- `packages/contracts/news.ts`에 Zod 응답 계약을 추가하고 NewsItem/SourceStatus/FeedResponse/FeedStats 타입을 스키마에서 추론.
+- OpenAPIHono 라우트 정의에서 OpenAPI 3.1 명세 생성. `/openapi.json`, `/api/docs` 제공. 기존 오류 JSON·교차 조건·커서 검증 유지.
+- Wrangler worker-first와 Vite proxy에 /openapi.json 추가. Swagger CDN은 5.30.3 고정, 같은 origin 대상으로 GET 실행.
+- DB·Collector 변경 없음. 운영 배포 전이며 MCP는 후속 단계.

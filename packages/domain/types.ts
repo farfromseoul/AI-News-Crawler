@@ -1,3 +1,10 @@
+import type { z } from 'zod';
+import type {
+  newsItemSchema,
+  sourceStatusSchema,
+  feedResponseSchema,
+  feedStatsSchema,
+} from '../contracts/news';
 export const sources = [
   'geeknews',
   'x',
@@ -73,46 +80,11 @@ export interface SourceItem extends DiscoveryMetadata {
   publishedAt?: string;
   thumbnailUrl?: string;
 }
-export interface NewsItem extends DiscoveryMetadata {
-  id: string;
-  source: Source;
-  externalId: string;
-  title: string;
-  url: string;
-  canonicalUrl: string;
-  excerpt: string;
-  author: string;
-  publishedAt: string | null;
-  collectedAt: string;
-  sortAt: string;
-  thumbnailUrl: string | null;
-  tags: Topic[];
-  score: number;
-  contentKind: 'news' | 'tutorial';
-  classificationReason: string | null;
-  sections?: ('ai' | 'engineering')[];
-  conferences?: string[];
-  primaryTopic?: Topic;
-}
-export interface SourceStatus {
-  source: Source;
-  status: 'pending' | 'ok' | 'partial' | 'error' | 'not_configured' | 'budget_exhausted';
-  lastAttemptAt: string | null;
-  lastSuccessAt: string | null;
-  count: number;
-  stale: boolean;
-}
-export interface FeedResponse {
-  items: NewsItem[];
-  nextCursor: string | null;
-  total: number;
-}
+export type NewsItem = z.infer<typeof newsItemSchema>;
+export type SourceStatus = z.infer<typeof sourceStatusSchema>;
+export type FeedResponse = z.infer<typeof feedResponseSchema>;
 export interface Enricher {
   enrich(item: SourceItem): { tags: Topic[]; score: number } | null;
 }
 
-export interface FeedStats {
-  total: number;
-  topics: { tag: Topic; count: number }[];
-  tags: { tag: Topic; count: number }[];
-}
+export type FeedStats = z.infer<typeof feedStatsSchema>;
