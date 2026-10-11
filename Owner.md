@@ -168,3 +168,15 @@
 - 준비: 원격 main 이력 확인, 초기 구현 PR 설명과 테스트 결과 정리. 시스템 Git 미설치로 프로젝트 캐시에 JavaScript Git 도구 준비.
 - 검증: 타입 검사·빌드, 단위/D1 통합 22개 및 스케줄러 2개 통과. 인증 파일·로컬 DB·로그·빌드·의존성을 커밋에서 제외.
 - 현재 제한: GitHub 인증 연결 대기. 원격 push/PR 생성은 완료 후 별도 확인 필요.
+
+### 2026-10-11 — GitHub 토큰 설정 안내
+
+- 요청: push/PR용 GitHub API 토큰 발급 절차.
+- 안내: fine-grained 토큰을 해당 저장소에 제한하고 Contents/Pull requests/Workflows 쓰기 권한 사용. CI 파일 포함으로 Workflows 필요. Git 제외된 .cache/github-token에 로컬 저장하도록 빈 파일 준비(기존 값 덮어쓰지 않음).
+- 상태: 실제 토큰 저장 및 인증 확인 전이며 push/PR은 대기 중.
+
+### 2026-10-11 — GitHub 인증 확인 및 게시 진행
+
+- 사용자 토큰 저장 확인 후 대상 저장소 접근과 push 권한, main 이력 일치 확인.
+- 토큰은 로컬 인증용이며 GitHub Actions Secrets와 용도가 다름을 설명. 토큰 파일은 Git 제외 경로에 유지하며 원문 출력하지 않음.
+- 요청된 feature 브랜치 push와 main 대상 PR 게시 진행. 병합 및 Cloudflare 배포는 범위에 포함하지 않음.
