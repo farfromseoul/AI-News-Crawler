@@ -1,0 +1,17 @@
+{
+  "crons": ["0 0-5 * * *", "0 6-8,11 * * TUE,FRI", "0 9-10 * * SUN"],
+  "jobs": [
+    { "source": "geeknews", "hourUTC": 0, "days": [], "staleHours": 26 },
+    { "source": "hackernews", "hourUTC": 1, "days": [], "staleHours": 26 },
+    { "source": "youtube", "hourUTC": 2, "days": [], "staleHours": 26 },
+    { "source": "cncf", "hourUTC": 3, "days": [], "staleHours": 26 },
+    { "source": "thenewstack", "hourUTC": 4, "days": [], "staleHours": 26 },
+    { "source": "infoq", "hourUTC": 5, "days": [], "staleHours": 26 },
+    { "source": "aws", "hourUTC": 6, "days": [2, 5], "staleHours": 98 },
+    { "source": "kubernetes", "hourUTC": 7, "days": [2, 5], "staleHours": 98 },
+    { "source": "cloudflare", "hourUTC": 8, "days": [2, 5], "staleHours": 98 },
+    { "source": "martinfowler", "hourUTC": 9, "days": [0], "staleHours": 170 },
+    { "source": "bytebytego", "hourUTC": 10, "days": [0], "staleHours": 170 },
+    { "source": "conferences", "hourUTC": 11, "days": [2, 5], "staleHours": 98 }
+  ]
+}

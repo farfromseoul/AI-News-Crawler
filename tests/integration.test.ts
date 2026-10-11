@@ -300,8 +300,8 @@ it('dispatches one RSS source per scheduled invocation and shares YouTube search
   try {
     await collector.scheduled(
       {
-        cron: '0-7 6 * * *',
-        scheduledTime: Date.parse('2026-10-11T06:02:00Z'),
+        cron: '0 0-5 * * *',
+        scheduledTime: Date.parse('2026-10-11T05:00:00Z'),
       } as ScheduledController,
       { DB: db },
     );
@@ -322,8 +322,8 @@ it('dispatches one RSS source per scheduled invocation and shares YouTube search
     await collectSource(env, 'youtube');
     await collector.scheduled(
       {
-        cron: '30 6 * * *',
-        scheduledTime: Date.parse('2026-10-11T06:30:00Z'),
+        cron: '0 6-8,11 * * TUE,FRI',
+        scheduledTime: Date.parse('2026-10-13T11:00:00Z'),
       } as ScheduledController,
       env,
     );

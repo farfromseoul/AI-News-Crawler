@@ -1,3 +1,4 @@
+import { staleHours } from '../domain/schedule';
 import {
   decodeCursor,
   encodeCursor,
@@ -263,7 +264,9 @@ export class NewsRepository {
       lastAttemptAt: s.last_attempt_at,
       lastSuccessAt: s.last_success_at,
       count: s.count,
-      stale: !!s.last_success_at && Date.now() - Date.parse(s.last_success_at) > 26 * 3600000,
+      stale:
+        !!s.last_success_at &&
+        Date.now() - Date.parse(s.last_success_at) > staleHours(s.source) * 3600000,
     }));
   }
 }
