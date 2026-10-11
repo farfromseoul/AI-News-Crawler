@@ -338,25 +338,15 @@ it('dispatches one RSS source per scheduled invocation and shares YouTube search
   }
 });
 
-it('claims the one-time RSS slot only once and ignores out-of-date events', async () => {
+it('ignores retired bootstrap crons without DB or external calls', async () => {
   const { default: collector } = await import('../workers/collector');
   const { vi } = await import('vitest');
-  const fetchMock = vi.fn().mockImplementation(async () => new Response('<rss><channel/></rss>'));
-  vi.stubGlobal('fetch', fetchMock);
-  try {
-    const event = {
-      cron: '50-57 13 11 10 *',
-      scheduledTime: Date.parse('2026-10-11T13:50:00Z'),
-    } as ScheduledController;
-    await collector.scheduled(event, { DB: db });
-    await collector.scheduled(event, { DB: db });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+  const prepare = vi.fn();
+  for (const cron of ['40-47 13 11 10 *', '50-57 13 11 10 *']) {
     await collector.scheduled(
-      { ...event, scheduledTime: Date.parse('2027-10-11T13:50:00Z') } as ScheduledController,
-      { DB: db },
+      { cron, scheduledTime: Date.parse('2026-10-11T13:50:00Z') } as ScheduledController,
+      { DB: { prepare } as unknown as D1Database },
     );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  } finally {
-    vi.unstubAllGlobals();
   }
+  expect(prepare).not.toHaveBeenCalled();
 });
