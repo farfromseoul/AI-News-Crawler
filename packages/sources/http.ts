@@ -9,7 +9,7 @@ export async function request(url: string, init: RequestInit = {}, retries = 2):
     try {
       response = await fetch(url, {
         ...init,
-        redirect: 'error',
+        redirect: 'manual',
         signal: AbortSignal.timeout(12000),
       });
     } catch {
@@ -18,6 +18,11 @@ export async function request(url: string, init: RequestInit = {}, retries = 2):
       continue;
     }
     if (response.ok) return response;
+    // workerd supports manual/follow only. Reject redirects without another subrequest.
+    if (response.status >= 300 && response.status < 400) {
+      await response.body?.cancel();
+      throw new SourceError('redirect_blocked');
+    }
     const retryable = response.status === 429 || response.status >= 500;
     if (!retryable || attempt >= retries)
       throw new SourceError(
