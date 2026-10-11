@@ -1,3 +1,4 @@
+import { collectorCrons, scheduledJob } from '../../packages/domain/schedule';
 import { engineeringFeeds, conferences } from '../../packages/domain/catalog';
 import { RssAdapter, type FeedSource } from '../../packages/sources/rss';
 import { normalize, sources, type Source, type NewsItem } from '../../packages/domain';
@@ -200,29 +201,26 @@ export async function collectAll(env: CollectorEnv) {
   for (const source of sources) results.push(await collectSource(env, source));
   return results;
 }
+export async function collectScheduled(env: CollectorEnv, time: number) {
+  const job = scheduledJob(time);
+  if (!job) return;
+  if (job === 'conferences') {
+    // Fixed Tue/Fri partition covers all seven events every week, without overlap.
+    const entries = Object.values(conferences);
+    const queries = (new Date(time).getUTCDay() === 2 ? entries.slice(0, 4) : entries.slice(4)).map(
+      (c) => c.query,
+    );
+    return collectSource(
+      { ...env, CONFERENCE_SEARCH: true, YOUTUBE_QUERIES: queries.join('|') },
+      'youtube',
+    );
+  }
+  return collectSource(env, job as Source);
+}
 export default {
   async scheduled(event: ScheduledController, env: CollectorEnv) {
-    // Separate invocations keep RSS parsing and external requests out of the original 49-call batch.
-    if (event.cron === '0-7 6 * * *') {
-      const source = (Object.keys(engineeringFeeds) as FeedSource[])[
-        new Date(event.scheduledTime).getUTCMinutes()
-      ];
-      if (source) await collectSource(env, source);
-    } else if (event.cron === '30 6 * * *') {
-      const entries = Object.values(conferences);
-      const start = (Math.floor(event.scheduledTime / 86400000) * 4) % entries.length;
-      const queries = Array.from(
-        { length: 4 },
-        (_, i) => entries[(start + i) % entries.length].query,
-      );
-      await collectSource(
-        { ...env, CONFERENCE_SEARCH: true, YOUTUBE_QUERIES: queries.join('|') },
-        'youtube',
-      );
-    } else {
-      for (const source of ['geeknews', 'x', 'youtube', 'hackernews'] as const)
-        await collectSource(env, source);
-    }
+    // Ignore obsolete cron events during configuration propagation; never fall back to a batch.
+    if (collectorCrons.includes(event.cron)) await collectScheduled(env, event.scheduledTime);
   },
   fetch() {
     return new Response('Not found', { status: 404 });
