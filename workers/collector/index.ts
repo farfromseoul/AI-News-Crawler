@@ -1,3 +1,5 @@
+import { engineeringFeeds, conferences } from '../../packages/domain/catalog';
+import { RssAdapter, type FeedSource } from '../../packages/sources/rss';
 import { normalize, sources, type Source, type NewsItem } from '../../packages/domain';
 import {
   GeekNewsAdapter,
@@ -13,6 +15,7 @@ import { defaultXQuery } from '../../packages/sources/x';
 
 export interface CollectorEnv {
   DB: D1Database;
+  CONFERENCE_SEARCH?: boolean;
   YOUTUBE_API_KEY?: string;
   YOUTUBE_QUERIES?: string;
   YOUTUBE_DAILY_SEARCH_LIMIT?: string;
@@ -69,6 +72,7 @@ export async function collectSource(env: CollectorEnv, source: Source, override?
     let adapter: SourceAdapter | undefined = override,
       maxItems = 250;
     if (!adapter) {
+      if (source in engineeringFeeds) adapter = new RssAdapter(source as FeedSource);
       if (source === 'geeknews') adapter = new GeekNewsAdapter();
       if (source === 'hackernews') adapter = new HackerNewsAdapter();
       if (source === 'youtube' && env.YOUTUBE_API_KEY) {
@@ -98,7 +102,11 @@ export async function collectSource(env: CollectorEnv, source: Source, override?
         )
           .bind('youtube', day, calls)
           .run();
-        adapter = new YouTubeSearchAdapter(env.YOUTUBE_API_KEY, queries);
+        adapter = new YouTubeSearchAdapter(
+          env.YOUTUBE_API_KEY,
+          queries,
+          env.CONFERENCE_SEARCH ? 180 : undefined,
+        );
       }
       if (
         source === 'x' &&
@@ -143,7 +151,7 @@ export async function collectSource(env: CollectorEnv, source: Source, override?
     const previous = await env.DB.prepare('SELECT last_success_at FROM source_state WHERE source=?')
       .bind(source)
       .first<{ last_success_at: string | null }>();
-    const earliest = Date.now() - 6.9 * 86400000;
+    const earliest = Date.now() - (source in engineeringFeeds ? 90 : 6.9) * 86400000;
     const since = new Date(
       Math.max(
         earliest,
@@ -193,8 +201,28 @@ export async function collectAll(env: CollectorEnv) {
   return results;
 }
 export default {
-  async scheduled(_event: ScheduledController, env: CollectorEnv) {
-    await collectAll(env);
+  async scheduled(event: ScheduledController, env: CollectorEnv) {
+    // Separate invocations keep RSS parsing and external requests out of the original 49-call batch.
+    if (event.cron === '0-7 6 * * *') {
+      const source = (Object.keys(engineeringFeeds) as FeedSource[])[
+        new Date(event.scheduledTime).getUTCMinutes()
+      ];
+      if (source) await collectSource(env, source);
+    } else if (event.cron === '30 6 * * *') {
+      const entries = Object.values(conferences);
+      const start = (Math.floor(event.scheduledTime / 86400000) * 4) % entries.length;
+      const queries = Array.from(
+        { length: 4 },
+        (_, i) => entries[(start + i) % entries.length].query,
+      );
+      await collectSource(
+        { ...env, CONFERENCE_SEARCH: true, YOUTUBE_QUERIES: queries.join('|') },
+        'youtube',
+      );
+    } else {
+      for (const source of ['geeknews', 'x', 'youtube', 'hackernews'] as const)
+        await collectSource(env, source);
+    }
   },
   fetch() {
     return new Response('Not found', { status: 404 });

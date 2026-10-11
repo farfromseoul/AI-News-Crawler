@@ -21,7 +21,9 @@
     "deploy:api": "wrangler deploy --config wrangler.jsonc",
     "deploy:collector": "wrangler deploy --config wrangler.collector.jsonc",
     "scheduler": "node scripts/scheduler.mjs",
-    "test:scheduler": "node --test scripts/scheduler.test.mjs"
+    "test:scheduler": "node --test scripts/scheduler.test.mjs",
+    "collect:engineering": "tsx scripts/collect-engineering.ts",
+    "db:reclassify": "tsx scripts/reclassify.ts"
   },
   "dependencies": {
     "fast-xml-parser": "^5.3.0",

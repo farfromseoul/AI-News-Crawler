@@ -12,7 +12,7 @@
       "migrations_dir": "migrations",
     },
   ],
-  "triggers": { "crons": ["30 5 * * *"] },
+  "triggers": { "crons": ["30 5 * * *", "0-7 6 * * *", "30 6 * * *"] },
   "vars": {
     "X_DAILY_LIMIT": "0",
     "X_MONTHLY_LIMIT": "0",

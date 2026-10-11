@@ -6,6 +6,8 @@ import {
   type NewsItem,
   type SourceStatus,
   queryScope,
+  topicLabels,
+  type FeedStats,
 } from '../domain';
 
 interface Row {
@@ -36,9 +38,15 @@ interface Row {
   content_kind: 'news' | 'tutorial';
   classification_reason: string | null;
   official_source: number;
+  sections: string;
+  conferences: string;
+  primary_topic: NewsItem['primaryTopic'];
 }
 function fromRow(row: Row): NewsItem {
   return {
+    sections: JSON.parse(row.sections),
+    conferences: JSON.parse(row.conferences),
+    primaryTopic: row.primary_topic,
     id: row.id,
     source: row.source,
     externalId: row.external_id,
@@ -81,15 +89,15 @@ export class NewsRepository {
           this.db
             .prepare(
               `
-        INSERT INTO items(id,source,external_id,title,url,canonical_url,excerpt,author,published_at,collected_at,sort_at,thumbnail_url,tags,score,author_id,discovery,view_count,like_count,reply_count,repost_count,comment_count,metrics_at,duration_seconds,content_kind,classification_reason,official_source,points)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(source,external_id) DO UPDATE SET
+        INSERT INTO items(id,source,external_id,title,url,canonical_url,excerpt,author,published_at,collected_at,sort_at,thumbnail_url,tags,score,author_id,discovery,view_count,like_count,reply_count,repost_count,comment_count,metrics_at,duration_seconds,content_kind,classification_reason,official_source,points,sections,conferences,primary_topic)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(source,external_id) DO UPDATE SET
         title=excluded.title,url=excluded.url,canonical_url=excluded.canonical_url,excerpt=excluded.excerpt,
         author=excluded.author,published_at=excluded.published_at,thumbnail_url=excluded.thumbnail_url,tags=excluded.tags,score=excluded.score,
         sort_at=COALESCE(excluded.published_at,items.sort_at),
         author_id=excluded.author_id,discovery=excluded.discovery,view_count=excluded.view_count,
         like_count=excluded.like_count,reply_count=excluded.reply_count,repost_count=excluded.repost_count,
         comment_count=excluded.comment_count,metrics_at=excluded.metrics_at,duration_seconds=excluded.duration_seconds,
-        content_kind=excluded.content_kind,classification_reason=excluded.classification_reason,official_source=excluded.official_source,points=excluded.points
+        content_kind=excluded.content_kind,classification_reason=excluded.classification_reason,official_source=excluded.official_source,points=excluded.points,sections=excluded.sections,conferences=excluded.conferences,primary_topic=excluded.primary_topic
       `,
             )
             .bind(
@@ -120,6 +128,9 @@ export class NewsRepository {
               i.classificationReason,
               i.officialSource ? 1 : 0,
               i.metrics?.points ?? null,
+              JSON.stringify(i.sections ?? ['ai']),
+              JSON.stringify(i.conferences ?? []),
+              i.primaryTopic ?? i.tags[0] ?? 'industry',
             ),
         ),
       );
@@ -127,7 +138,7 @@ export class NewsRepository {
     }
     return changes;
   }
-  async list(query: FeedQuery): Promise<FeedResponse> {
+  private filtered(query: FeedQuery) {
     const clauses: string[] = [],
       values: (string | number)[] = [];
     if (query.source) {
@@ -138,9 +149,24 @@ export class NewsRepository {
       clauses.push('EXISTS (SELECT 1 FROM json_each(items.tags) WHERE value = ?)');
       values.push(query.tag);
     }
+    if (query.section === 'ai' || query.section === 'engineering') {
+      clauses.push('EXISTS (SELECT 1 FROM json_each(items.sections) WHERE value=?)');
+      values.push(query.section);
+    }
+    if (query.section === 'conferences') clauses.push('json_array_length(conferences)>0');
+    if (query.conference) {
+      clauses.push('EXISTS (SELECT 1 FROM json_each(items.conferences) WHERE value=?)');
+      values.push(query.conference);
+    }
     if (query.q) {
-      clauses.push("title LIKE ? ESCAPE '\\'");
-      values.push(`%${query.q.replace(/[\\%_]/g, '\\$&')}%`);
+      const term = query.q.replace(/^#/, '').toLowerCase();
+      const matches = Object.entries(topicLabels)
+        .filter(([key, label]) => key.includes(term) || label.toLowerCase().includes(term))
+        .map(([key]) => key);
+      clauses.push(
+        `(title LIKE ? ESCAPE '\\' ${matches.length ? `OR EXISTS (SELECT 1 FROM json_each(items.tags) WHERE value IN (${matches.map(() => '?').join(',')}))` : ''})`,
+      );
+      values.push(`%${term.replace(/[\\%_]/g, '\\$&')}%`, ...matches);
     }
     if (query.kind === 'tutorial') clauses.push("content_kind = 'tutorial'");
     if (query.kind === 'official') clauses.push('official_source = 1');
@@ -160,7 +186,32 @@ export class NewsRepository {
       query.source === 'youtube' ? 'COALESCE(view_count,-1)' : 'COALESCE(like_count,-1)';
     const order = `${query.sort === 'popular' ? `${rankColumn} DESC, ` : ''}sort_at DESC, id DESC`;
     // Apply channel diversity to the entire filtered set before pagination.
-    const base = `WITH filtered AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY source,COALESCE(author_id,id) ORDER BY ${order}) AS author_rank FROM items ${where()}), eligible AS (SELECT * FROM filtered WHERE source != 'youtube' OR author_rank <= 3)`;
+    const base = `WITH dedup AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY canonical_url ORDER BY sort_at DESC,id DESC) AS url_rank FROM items ${where()}), filtered AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY source,COALESCE(author_id,id) ORDER BY ${order}) AS author_rank FROM dedup WHERE url_rank=1), eligible AS (SELECT * FROM filtered WHERE source != 'youtube' OR author_rank <= 3)`;
+    return { base, values, order, rankColumn };
+  }
+  async stats(query: FeedQuery): Promise<FeedStats> {
+    const { base, values } = this.filtered(query);
+    const results = await this.db.batch([
+      this.db.prepare(`${base} SELECT COUNT(*) AS count FROM eligible`).bind(...values),
+      this.db
+        .prepare(
+          `${base} SELECT primary_topic AS tag, COUNT(*) AS count FROM eligible GROUP BY primary_topic ORDER BY count DESC, tag`,
+        )
+        .bind(...values),
+      this.db
+        .prepare(
+          `${base} SELECT j.value AS tag, COUNT(DISTINCT eligible.id) AS count FROM eligible, json_each(eligible.tags) j GROUP BY j.value ORDER BY count DESC, tag LIMIT 12`,
+        )
+        .bind(...values),
+    ]);
+    return {
+      total: Number((results[0].results[0] as { count: number }).count),
+      topics: results[1].results as FeedStats['topics'],
+      tags: results[2].results as FeedStats['tags'],
+    };
+  }
+  async list(query: FeedQuery): Promise<FeedResponse> {
+    const { base, values, order, rankColumn } = this.filtered(query);
     const count = await this.db
       .prepare(`${base} SELECT COUNT(*) AS count FROM eligible`)
       .bind(...values)

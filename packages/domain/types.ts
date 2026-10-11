@@ -1,10 +1,37 @@
-export const sources = ['geeknews', 'x', 'youtube', 'hackernews'] as const;
+export const sources = [
+  'geeknews',
+  'x',
+  'youtube',
+  'hackernews',
+  'cncf',
+  'thenewstack',
+  'infoq',
+  'aws',
+  'kubernetes',
+  'cloudflare',
+  'martinfowler',
+  'bytebytego',
+] as const;
 export type Source = (typeof sources)[number];
 export const topicLabels = {
   models: '모델·연구',
   dev: '개발 도구',
   opensource: '오픈소스',
   industry: '산업·인사이트',
+  'cloud-native': 'Cloud Native',
+  platform: 'Platform / DevOps',
+  architecture: '아키텍처',
+  reliability: 'SRE / 안정성',
+  security: '보안·Identity',
+  'ai-infra': 'AI 인프라',
+  cloud: '클라우드',
+  networking: '네트워크',
+  kubernetes: 'Kubernetes',
+  terraform: 'Terraform / IaC',
+  observability: '관측성',
+  iam: 'IAM / OAuth',
+  cicd: 'CI/CD',
+  database: '데이터베이스',
 } as const;
 export type Topic = keyof typeof topicLabels;
 export const sourceLabels: Record<Source, string> = {
@@ -12,6 +39,14 @@ export const sourceLabels: Record<Source, string> = {
   x: 'X',
   youtube: 'YouTube',
   hackernews: 'Hacker News',
+  cncf: 'CNCF Blog',
+  thenewstack: 'The New Stack',
+  infoq: 'InfoQ',
+  aws: 'AWS What’s New',
+  kubernetes: 'Kubernetes Blog',
+  cloudflare: 'Cloudflare Blog',
+  martinfowler: 'Martin Fowler',
+  bytebytego: 'ByteByteGo',
 };
 export interface DiscoveryMetadata {
   authorId?: string;
@@ -55,6 +90,9 @@ export interface NewsItem extends DiscoveryMetadata {
   score: number;
   contentKind: 'news' | 'tutorial';
   classificationReason: string | null;
+  sections?: ('ai' | 'engineering')[];
+  conferences?: string[];
+  primaryTopic?: Topic;
 }
 export interface SourceStatus {
   source: Source;
@@ -71,4 +109,10 @@ export interface FeedResponse {
 }
 export interface Enricher {
   enrich(item: SourceItem): { tags: Topic[]; score: number } | null;
+}
+
+export interface FeedStats {
+  total: number;
+  topics: { tag: Topic; count: number }[];
+  tags: { tag: Topic; count: number }[];
 }

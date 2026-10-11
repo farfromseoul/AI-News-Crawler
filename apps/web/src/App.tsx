@@ -1,3 +1,5 @@
+import { FeedInsights } from './FeedInsights';
+import { conferences, engineeringFeeds } from '../../../packages/domain/catalog';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
   DiscoveryControls,
@@ -74,6 +76,7 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   return response.json();
 }
 function SourceIcon({ source }: { source: Source }) {
+  if (source in engineeringFeeds) return <Radio size={15} aria-hidden="true" />;
   return source === 'hackernews' ? (
     <span aria-hidden="true">Y</span>
   ) : source === 'youtube' ? (
@@ -96,7 +99,17 @@ function stateText(s: SourceStatus) {
   if (s.status === 'partial') return '일부 수집 완료';
   return s.status === 'ok' ? '업데이트 완료' : '첫 수집 대기';
 }
-function NewsCard({ item, saved, onSave }: { item: NewsItem; saved: boolean; onSave: () => void }) {
+function NewsCard({
+  item,
+  saved,
+  onSave,
+  onTag,
+}: {
+  item: NewsItem;
+  saved: boolean;
+  onSave: () => void;
+  onTag: (tag: Topic) => void;
+}) {
   return (
     <article className={`news-card source-${item.source}`}>
       {item.thumbnailUrl && (
@@ -127,9 +140,19 @@ function NewsCard({ item, saved, onSave }: { item: NewsItem; saved: boolean; onS
       </h3>
       <p className="card-excerpt">{item.excerpt || '원문에서 자세한 내용을 확인해 보세요.'}</p>
       <ItemMetrics item={item} />
+      {!!item.conferences?.length && (
+        <p className="conference-label">
+          {item.conferences
+            .map((c) => conferences[c as keyof typeof conferences]?.name)
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      )}
       <div className="card-tags">
-        {item.tags.slice(0, 2).map((t) => (
-          <span key={t}>#{topicLabels[t]}</span>
+        {item.tags.map((t) => (
+          <button key={t} onClick={() => onTag(t)}>
+            #{topicLabels[t]}
+          </button>
         ))}
       </div>
       <div className="card-bottom">
@@ -167,6 +190,8 @@ function SignalArtwork() {
   );
 }
 export function App() {
+  const [section, setSection] = useState<'ai' | 'engineering' | 'conferences'>('ai');
+  const [conference, setConference] = useState('');
   const [sort, setSort] = useState<Sort>('latest'),
     [kind, setKind] = useState<Kind>('all');
   const [tab, setTab] = useState<Tab>('all'),
@@ -226,7 +251,7 @@ export function App() {
       .catch((e) => {
         if (e.name !== 'AbortError') setStatusError(true);
       });
-    getJson<FeedResponse>('/api/items?limit=1', controller.signal)
+    getJson<FeedResponse>('/api/items?section=ai&limit=1', controller.signal)
       .then((data) => setFeatured(data.items[0] ?? null))
       .catch(() => {});
     return () => controller.abort();
@@ -241,6 +266,8 @@ export function App() {
     sort: effectiveSort,
     kind: effectiveKind,
     period,
+    section,
+    ...(conference ? { conference } : {}),
     ...(tab !== 'all' ? { source: tab } : {}),
     ...(topic ? { tag: topic } : {}),
     ...(debounced ? { q: debounced } : {}),
@@ -271,6 +298,10 @@ export function App() {
           .filter(
             (i) =>
               (tab === 'all' || i.source === tab) &&
+              (section === 'conferences'
+                ? !!i.conferences?.length
+                : (i.sections ?? ['ai']).includes(section)) &&
+              (!conference || i.conferences?.includes(conference)) &&
               (!topic || i.tags.includes(topic)) &&
               (effectiveKind !== 'tutorial' || i.contentKind === 'tutorial') &&
               (effectiveKind !== 'official' || i.officialSource) &&
@@ -278,7 +309,12 @@ export function App() {
                 (popularity(i) >= 0 &&
                   i.publishedAt !== null &&
                   Date.parse(i.publishedAt) >= Date.now() - 7 * 86400000)) &&
-              i.title.toLowerCase().includes(debounced.toLowerCase()) &&
+              (i.title.toLowerCase().includes(debounced.toLowerCase()) ||
+                i.tags.some((t) =>
+                  (t + ' ' + topicLabels[t])
+                    .toLowerCase()
+                    .includes(debounced.replace(/^#/, '').toLowerCase()),
+                )) &&
               (period === 'all' ||
                 Date.parse(i.sortAt) >= Date.now() - (period === '1d' ? 1 : 7) * 86400000),
           )
@@ -372,6 +408,7 @@ export function App() {
     setPeriod('all');
     setSort('latest');
     setKind('all');
+    setConference('');
   };
   return (
     <>
@@ -386,6 +423,7 @@ export function App() {
             href="#"
             aria-label="AI SIGNAL 홈"
             onClick={() => {
+              setSection('ai');
               setTab('all');
               setSavedOnly(false);
               resetFilters();
@@ -440,7 +478,7 @@ export function App() {
               <span>STAY CURIOUS.</span>
             </h1>
             <p className="hero-description">
-              빠르게 변하는 AI, 놓치고 싶지 않은 이야기.
+              AI와 클라우드, 설계와 운영의 새로운 이야기.
               <br />
               세상의 새로운 신호를 한곳에서 발견하세요.
             </p>
@@ -451,9 +489,9 @@ export function App() {
               <span className="mini-avatar">
                 <Radio size={14} />
               </span>
-              <span>GeekNews · X · YouTube</span>
+              <span>AI · DevOps · Architecture</span>
               <span className="meta-divider" />
-              매일 09:00 KST
+              매일 새 소식 수집
             </div>
           </div>
           <aside className="featured-card" aria-label="가장 최근 수집된 AI 소식">
@@ -509,7 +547,7 @@ export function App() {
             <span>수집 채널</span>
             <b>
               {connected}
-              <span> / 3</span>
+              <span> / {sources.length}</span>
             </b>
           </div>
           {sources.map((source) => {
@@ -544,7 +582,13 @@ export function App() {
             <div>
               <p className="section-eyebrow">LESS NOISE. MORE SIGNAL.</p>
               <h2 id="feed-title">
-                {savedOnly ? '저장한 소식' : '오늘의 AI 피드'}
+                {savedOnly
+                  ? '저장한 소식'
+                  : section === 'engineering'
+                    ? '엔지니어링 피드'
+                    : section === 'conferences'
+                      ? '컨퍼런스 피드'
+                      : '오늘의 AI 피드'}
                 <span className="heading-star">✳</span>
               </h2>
             </div>
@@ -558,6 +602,44 @@ export function App() {
               <span>{latest ? `${formatDate(latest)} 갱신` : '업데이트 확인'}</span>
             </button>
           </div>
+          <nav className="section-nav" aria-label="피드 분야">
+            {(
+              [
+                ['ai', 'AI 뉴스'],
+                ['engineering', '엔지니어링'],
+                ['conferences', '컨퍼런스'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                aria-pressed={section === id}
+                className={section === id ? 'active' : ''}
+                onClick={() => {
+                  setSection(id);
+                  changeTab('all');
+                  resetFilters();
+                  setSavedOnly(false);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+          {section === 'conferences' && (
+            <div className="conference-directory">
+              <p>
+                공식 행사 안내 · 아래 피드는 수집한 관련 기사와 영상이에요. 행사 일정과 슬라이드는
+                공식 사이트에서 확인하세요.
+              </p>
+              <div>
+                {Object.entries(conferences).map(([id, c]) => (
+                  <a key={id} href={c.url} target="_blank" rel="noreferrer">
+                    {c.name} ↗
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="feed-navigation">
             <div className="source-tabs" role="tablist" aria-label="뉴스 소스">
               {tabs.map((t, index) => (
@@ -573,8 +655,7 @@ export function App() {
                   className={tab === t.id ? 'selected' : ''}
                 >
                   {t.id === 'all' ? <Sparkles size={15} /> : <SourceIcon source={t.id} />}
-                  <span>{t.name}</span>
-                  {t.id === 'all' && <b>{statuses.reduce((n, s) => n + s.count, 0)}</b>}
+                  <span>{t.id === 'all' && section !== 'ai' ? '전체 출처' : t.name}</span>
                 </button>
               ))}
             </div>
@@ -584,11 +665,60 @@ export function App() {
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="관심 있는 AI 소식 검색"
+                placeholder="제목 또는 #태그 검색"
                 aria-label="뉴스 제목 검색"
               />
               <kbd>/</kbd>
             </label>
+          </div>
+          <div className="catalog-filters">
+            <label>
+              출처
+              <select
+                aria-label="피드 출처"
+                value={tab}
+                onChange={(e) => changeTab(e.target.value as Tab)}
+              >
+                <option value="all">전체 출처</option>
+                {sources.map((id) => (
+                  <option key={id} value={id}>
+                    {sourceLabels[id]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              태그
+              <select
+                aria-label="태그 선택"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value as Topic | '')}
+              >
+                <option value="">전체 태그</option>
+                {Object.entries(topicLabels).map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {section === 'conferences' && (
+              <label>
+                컨퍼런스
+                <select
+                  aria-label="컨퍼런스 선택"
+                  value={conference}
+                  onChange={(e) => setConference(e.target.value)}
+                >
+                  <option value="">모든 행사</option>
+                  {Object.entries(conferences).map(([id, c]) => (
+                    <option key={id} value={id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
           <div className="filter-row">
             <div className="topic-filters" aria-label="주제 필터">
@@ -599,16 +729,29 @@ export function App() {
               >
                 전체 주제
               </button>
-              {Object.entries(topicLabels).map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => setTopic(key as Topic)}
-                  aria-pressed={topic === key}
-                  className={topic === key ? 'active' : ''}
-                >
-                  {label}
-                </button>
-              ))}
+              {Object.entries(topicLabels)
+                .filter(([key]) =>
+                  section === 'ai'
+                    ? ['models', 'dev', 'opensource', 'industry'].includes(key)
+                    : [
+                        'cloud-native',
+                        'platform',
+                        'architecture',
+                        'reliability',
+                        'security',
+                        'ai-infra',
+                      ].includes(key),
+                )
+                .map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setTopic(key as Topic)}
+                    aria-pressed={topic === key}
+                    className={topic === key ? 'active' : ''}
+                  >
+                    {label}
+                  </button>
+                ))}
             </div>
             <label className="period-filter">
               <Clock3 size={13} />
@@ -661,6 +804,7 @@ export function App() {
               수집 상태를 확인하지 못했어요. 새로고침으로 다시 확인해 주세요.
             </div>
           )}
+          {!savedOnly && <FeedInsights query={query} revision={revision} onTag={setTopic} />}
           <div className="results-meta">
             <span>
               {loading ? '신호를 불러오는 중…' : `${total}개의 ${savedOnly ? '저장한 ' : ''}소식`}
@@ -674,7 +818,7 @@ export function App() {
               <ArrowDown size={11} />
             </span>
           </div>
-          <div id="news-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} aria-busy={loading}>
+          <div id="news-panel" role="tabpanel" aria-label="검색된 소식" aria-busy={loading}>
             {loading ? (
               <div className="news-grid" aria-label="뉴스 로딩 중">
                 {[0, 1, 2, 3, 4, 5].map((n) => (
@@ -703,6 +847,7 @@ export function App() {
                     item={item}
                     saved={bookmarks.includes(item.id)}
                     onSave={() => toggleSave(item.id)}
+                    onTag={setTopic}
                   />
                 ))}
               </div>
@@ -764,7 +909,7 @@ export function App() {
           </span>
           <div>
             <h2>내일의 변화, 오늘의 신호.</h2>
-            <p>매일 새로운 AI 이야기를 모아 전해드려요.</p>
+            <p>AI부터 클라우드 아키텍처까지, 학습으로 이어지는 기술 소식.</p>
           </div>
           <a href="#feed" aria-label="뉴스 목록으로 이동">
             <ArrowUpRight size={24} />

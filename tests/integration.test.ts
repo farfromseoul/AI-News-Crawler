@@ -230,3 +230,110 @@ it('persists Hacker News separately and preserves existing sources after migrati
   ).toBe(25);
   expect((await repo.list(querySchema.parse({ source: 'geeknews' }))).total).toBeGreaterThan(0);
 });
+
+it('filters engineering tags and conferences and aggregates the full deduplicated result before pagination', async () => {
+  const repo = new NewsRepository(db);
+  const at = new Date().toISOString();
+  await repo.upsert([
+    normalize(
+      {
+        source: 'cncf',
+        externalId: 'eng-a',
+        title: 'KubeCon Kubernetes Terraform',
+        url: 'https://example.com/engineering-a',
+        publishedAt: at,
+      },
+      at,
+    )!,
+    normalize(
+      {
+        source: 'infoq',
+        externalId: 'eng-copy',
+        title: 'KubeCon Kubernetes Terraform',
+        url: 'https://example.com/engineering-a?utm_source=copy',
+        publishedAt: at,
+      },
+      at,
+    )!,
+    normalize(
+      {
+        source: 'cncf',
+        externalId: 'eng-b',
+        title: 'Kubernetes SRE incident',
+        url: 'https://example.com/engineering-b',
+        publishedAt: at,
+      },
+      at,
+    )!,
+  ]);
+  const query = querySchema.parse({ section: 'engineering', tag: 'kubernetes', limit: 1 });
+  const page = await repo.list(query);
+  const stats = await repo.stats(query);
+  expect(page.total).toBe(2);
+  expect(page.items).toHaveLength(1);
+  expect(page.nextCursor).not.toBeNull();
+  expect(stats.total).toBe(2);
+  expect(stats.topics.reduce((n, t) => n + t.count, 0)).toBe(2);
+  expect(stats.tags.find((t) => t.tag === 'kubernetes')?.count).toBe(2);
+  expect(
+    (await repo.list(querySchema.parse({ section: 'engineering', q: '#Terraform' }))).total,
+  ).toBe(1);
+  expect(
+    (await repo.list(querySchema.parse({ conference: 'kubecon', section: 'conferences' }))).total,
+  ).toBe(1);
+  expect((await repo.list(querySchema.parse({ section: 'ai', tag: 'kubernetes' }))).total).toBe(0);
+  const second = await repo.list({ ...query, cursor: page.nextCursor! });
+  expect(second.items).toHaveLength(1);
+  expect(second.items[0].id).not.toBe(page.items[0].id);
+  const response = await app.request('/api/stats?section=engineering&tag=kubernetes', {}, {
+    DB: db,
+  } as any);
+  expect(response.status).toBe(200);
+  expect(((await response.json()) as any).total).toBe(2);
+});
+
+it('dispatches one RSS source per scheduled invocation and shares YouTube search reservations', async () => {
+  const { default: collector } = await import('../workers/collector');
+  const { vi } = await import('vitest');
+  const fetchMock = vi.fn().mockResolvedValue(new Response('<rss><channel/></rss>'));
+  vi.stubGlobal('fetch', fetchMock);
+  try {
+    await collector.scheduled(
+      {
+        cron: '0-7 6 * * *',
+        scheduledTime: Date.parse('2026-10-11T06:02:00Z'),
+      } as ScheduledController,
+      { DB: db },
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toBe('https://feed.infoq.com/');
+    expect(
+      (
+        await db
+          .prepare("SELECT status FROM source_state WHERE source='infoq'")
+          .first<{ status: string }>()
+      )?.status,
+    ).toBe('ok');
+    await db.prepare("DELETE FROM usage_budget WHERE source='youtube'").run();
+    fetchMock
+      .mockReset()
+      .mockImplementation(async () => new Response(JSON.stringify({ items: [] })));
+    const env = { DB: db, YOUTUBE_API_KEY: 'test-key', YOUTUBE_DAILY_SEARCH_LIMIT: '16' };
+    await collectSource(env, 'youtube');
+    await collector.scheduled(
+      {
+        cron: '30 6 * * *',
+        scheduledTime: Date.parse('2026-10-11T06:30:00Z'),
+      } as ScheduledController,
+      env,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(16);
+    const params = new URL(String(fetchMock.mock.calls[8][0])).searchParams;
+    expect(params.get('q')).not.toBe('AI 에이전트');
+    expect(Date.now() - Date.parse(params.get('publishedAfter')!)).toBeGreaterThan(179 * 86400000);
+    expect((await collectSource(env, 'youtube')).status).toBe('budget_exhausted');
+    expect(fetchMock).toHaveBeenCalledTimes(16);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

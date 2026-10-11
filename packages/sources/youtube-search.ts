@@ -53,6 +53,7 @@ export class YouTubeSearchAdapter implements SourceAdapter {
   constructor(
     private key: string,
     private queries: string[] = youtubeQueries(),
+    private lookbackDays?: number,
   ) {}
   private async get(path: string, params: Record<string, string>) {
     const url = new URL(`https://www.googleapis.com/youtube/v3/${path}`);
@@ -70,7 +71,9 @@ export class YouTubeSearchAdapter implements SourceAdapter {
     const pages: string[][] = [];
     for (const query of queries)
       for (const order of ['date', 'viewCount']) {
-        const since = new Date(now.getTime() - (order === 'date' ? 2 : 7) * 86400000).toISOString();
+        const since = new Date(
+          now.getTime() - (this.lookbackDays ?? (order === 'date' ? 2 : 7)) * 86400000,
+        ).toISOString();
         const data = searchSchema.parse(
           await this.get('search', {
             part: 'snippet',
