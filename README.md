@@ -90,8 +90,8 @@ CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm r
 
 ## Cloudflare 배포
 
-1. `npx wrangler login` 후 `npx wrangler d1 create ai-news`를 실행합니다.
-2. 반환된 DB ID를 두 `wrangler*.jsonc`의 `database_id`에 동일하게 입력합니다. 현재 ID는 로컬용 자리표시자입니다.
+1. `npx wrangler login` 후 `npx wrangler d1 create ai-sig`를 실행합니다.
+2. 반환된 DB ID를 두 `wrangler*.jsonc`의 `database_id`에 동일하게 입력합니다. 현재 운영 DB는 ai-sig이며 preview_database_id는 기존 로컬 데이터 연결용입니다.
 3. collector 설정의 검색 주제·YouTube 검색 상한·X 건수 상한·쿼리를 구성합니다. 비밀은 `npx wrangler secret put YOUTUBE_API_KEY --config wrangler.collector.jsonc` 및 `X_BEARER_TOKEN`으로 등록합니다.
 4. GitHub `production` 환경에 `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`를 저장하고 `Deploy Cloudflare` 워크플로를 수동 실행합니다. 토큰에는 Worker 배포와 해당 D1 마이그레이션에 필요한 권한이 있어야 합니다.
 5. API·정적 화면·Cron 실행과 소스 상태를 배포 환경에서 확인합니다. 첫 수집은 다음 09:00 KST 예약 시각에 시작합니다.
@@ -108,7 +108,7 @@ CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm r
 
 ## Hacker News와 개별 수집
 
-Hacker News는 인증 없이 공식 Firebase API의 최신·인기 글 목록을 합쳐 최대 100개 후보를 확인합니다(동시 요청 5개). AI 관련성 규칙으로 선별하고 추천 점수·댓글 수를 저장합니다. 제목 링크는 원문 URL을 우선하며, 원문 URL이 없거나 안전하지 않으면 Hacker News 게시글로 연결합니다. 외부 기사 본문은 수집하지 않습니다. 전체 검색·아카이브가 아니므로 범위 제한 시 partial을 표시합니다.
+Hacker News는 인증 없이 공식 Firebase API의 최신·인기 글 목록을 합쳐 최대 30개 후보를 확인합니다(동시 요청 5개). AI 관련성 규칙으로 선별하고 추천 점수·댓글 수를 저장합니다. 제목 링크는 원문 URL을 우선하며, 원문 URL이 없거나 안전하지 않으면 Hacker News 게시글로 연결합니다. 외부 기사 본문은 수집하지 않습니다. 전체 검색·아카이브가 아니므로 범위 제한 시 partial을 표시합니다.
 
 ```sh
 npm run collect -- --source youtube
@@ -122,3 +122,5 @@ npm run collect -- --source hackernews
 `npm run scheduler`는 한국 시간 매일 09:00에 로컬 수집기를 실행합니다. 웹 서버와 별도 프로세스이며 시작 직후에는 수집하지 않습니다. 종료는 실행 터미널에서 Ctrl+C. 로그는 `.cache/scheduler.log`, 중복 실행 방지 PID는 `.cache/scheduler.pid`에 기록합니다.
 
 Mac이 켜져 있고 프로세스가 유지되어야 합니다. 잠자기 중 놓친 예약은 프로세스가 살아 있으면 깨어난 뒤 1회 실행합니다. 종료·재부팅 뒤에는 다시 실행해야 하며 과거 예약을 소급 실행하지 않습니다. 원격 상시 운영은 Cloudflare Cron 배포가 필요합니다. X 비활성 및 소스별 예산 한도는 동일하게 적용됩니다.
+
+무료 Workers 외부 호출 한도 대응: HN 개별 조회 자동 재시도 없음, 모든 소스의 자동 리다이렉트 차단. 외부 호출은 실행당 최대 49회이며 CPU 사용량은 배포 후 관측이 필요합니다.

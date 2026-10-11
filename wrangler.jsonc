@@ -12,8 +12,9 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "ai-news",
-      "database_id": "00000000-0000-0000-0000-000000000001",
+      "database_name": "ai-sig",
+      "database_id": "9efaed65-69cc-4bc6-b11e-da5bb4d43458",
+      "preview_database_id": "00000000-0000-0000-0000-000000000001",
       "migrations_dir": "migrations",
     },
   ],

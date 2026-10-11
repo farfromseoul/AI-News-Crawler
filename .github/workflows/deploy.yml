@@ -22,6 +22,6 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: node scripts/check-deploy.mjs
-      - run: npx wrangler d1 migrations apply ai-news --remote
+      - run: npx wrangler d1 migrations apply ai-sig --remote
       - run: npm run deploy:api
       - run: npm run deploy:collector
