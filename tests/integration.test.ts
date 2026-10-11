@@ -345,14 +345,14 @@ it('claims the one-time RSS slot only once and ignores out-of-date events', asyn
   vi.stubGlobal('fetch', fetchMock);
   try {
     const event = {
-      cron: '40-47 13 11 10 *',
-      scheduledTime: Date.parse('2026-10-11T13:40:00Z'),
+      cron: '50-57 13 11 10 *',
+      scheduledTime: Date.parse('2026-10-11T13:50:00Z'),
     } as ScheduledController;
     await collector.scheduled(event, { DB: db });
     await collector.scheduled(event, { DB: db });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     await collector.scheduled(
-      { ...event, scheduledTime: Date.parse('2027-10-11T13:40:00Z') } as ScheduledController,
+      { ...event, scheduledTime: Date.parse('2027-10-11T13:50:00Z') } as ScheduledController,
       { DB: db },
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
