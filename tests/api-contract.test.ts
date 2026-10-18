@@ -9,10 +9,10 @@ describe('OpenAPI contract', () => {
     const spec = (await response.json()) as any;
     await SwaggerParser.validate(structuredClone(spec));
     expect(spec.openapi).toBe('3.1.0');
-    expect(Object.keys(spec.paths)).toHaveLength(5);
+    expect(Object.keys(spec.paths)).toHaveLength(10);
     expect(spec.servers).toEqual([{ url: '/', description: '현재 서버' }]);
-    const operations = Object.values(spec.paths).map((path: any) => path.get.operationId);
-    expect(new Set(operations).size).toBe(5);
+    const operations = Object.values(spec.paths).flatMap((path: any) => Object.values(path).map((operation: any) => operation.operationId));
+    expect(new Set(operations).size).toBe(11);
     const params = spec.paths['/api/items'].get.parameters;
     expect(params.find((p: any) => p.name === 'limit').schema.maximum).toBe(50);
     expect(params.find((p: any) => p.name === 'source').schema.enum).toHaveLength(12);

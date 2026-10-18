@@ -18,5 +18,7 @@
       "migrations_dir": "migrations",
     },
   ],
+  "vars": { "ENGAGEMENT_ENABLED": "true", "ENGAGEMENT_ORIGIN": "https://ai-signal.negroism.workers.dev" },
+  "ratelimits": [{ "name": "ENGAGEMENT_LIMITER", "namespace_id": "1005", "simple": { "limit": 120, "period": 60 } }],
   "observability": { "enabled": true },
 }

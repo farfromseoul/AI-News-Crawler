@@ -1,3 +1,5 @@
+import { PrivacySettings, VisitorSummary, useReactions, type Reaction } from './engagement/Engagement';
+import { analytics } from './engagement/runtime';
 import { FeedInsights } from './FeedInsights';
 import { conferences, engineeringFeeds } from '../../../packages/domain/catalog';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
@@ -104,11 +106,15 @@ function NewsCard({
   saved,
   onSave,
   onTag,
+  reaction, pending, onLike,
 }: {
   item: NewsItem;
   saved: boolean;
   onSave: () => void;
   onTag: (tag: Topic) => void;
+  reaction?: Reaction;
+  pending?: boolean;
+  onLike: () => void;
 }) {
   return (
     <article className={`news-card source-${item.source}`}>
@@ -133,7 +139,7 @@ function NewsCard({
         </span>
       </div>
       <h3>
-        <a href={item.url} target="_blank" rel="noreferrer">
+        <a href={item.url} target="_blank" rel="noreferrer" onClick={() => analytics.event('article_open', { item_id: item.id, source: item.source })}>
           {item.title}
           <ArrowUpRight className="title-arrow" size={17} />
         </a>
@@ -157,6 +163,7 @@ function NewsCard({
       </div>
       <div className="card-bottom">
         <span className="author">{item.author || sourceLabels[item.source]}</span>
+        <button type="button" className="like-button" aria-label={`${item.title} AI SIGNAL 좋아요${reaction?.liked ? ' 취소' : ''}`} aria-pressed={reaction?.liked ?? false} disabled={!reaction || pending} onClick={onLike}>♥ {reaction?.count ?? '—'}</button>
         <button
           type="button"
           className={`save-button ${saved ? 'saved' : ''}`}
@@ -215,6 +222,7 @@ export function App() {
   const requestId = useRef(0),
     loadController = useRef<AbortController | null>(null);
   const feedRef = useRef<HTMLElement>(null);
+  const reactions = useReactions(items.map(item => item.id));
   useEffect(() => {
     const handle = (event: globalThis.KeyboardEvent) => {
       const target = event.target as HTMLElement;
@@ -463,6 +471,7 @@ export function App() {
           </div>
         </div>
       </header>
+      <VisitorSummary section={section} />
       <main className="shell">
         <section
           className={`hero ${tab !== 'all' || savedOnly ? 'hero-compact' : ''}`}
@@ -843,6 +852,9 @@ export function App() {
               <div className="news-grid">
                 {items.map((item) => (
                   <NewsCard
+                      reaction={reactions.states[item.id]}
+                      pending={reactions.pending[item.id]}
+                      onLike={() => reactions.toggle(item.id)}
                     key={item.id}
                     item={item}
                     saved={bookmarks.includes(item.id)}
@@ -916,7 +928,9 @@ export function App() {
           </a>
         </section>
       </main>
+      {reactions.error && <p className="shell reaction-error" role="alert">{reactions.error}</p>}
       <footer className="shell footer">
+        <PrivacySettings />
         <a className="brand footer-brand" href="#">
           <Activity size={20} />
           <span>

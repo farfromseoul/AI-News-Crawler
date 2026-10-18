@@ -1,3 +1,4 @@
+import { engagementApi, type EngagementEnv } from './engagement';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { swaggerUI } from '@hono/swagger-ui';
 import { routes, documentConfig } from './openapi';
@@ -5,7 +6,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { decodeCursor, querySchema, queryScope } from '../../packages/domain';
 import { NewsRepository } from '../../packages/storage';
 
-export interface ApiEnv {
+export interface ApiEnv extends EngagementEnv {
   DB: D1Database;
   ASSETS: Fetcher;
 }
@@ -52,6 +53,7 @@ app.openapi(routes.status, async (c) => {
   c.header('Cache-Control', 'no-store');
   return c.json({ sources: await new NewsRepository(c.env.DB).status() }, 200);
 });
+app.route('/api/engagement', engagementApi);
 app.doc31('/openapi.json', documentConfig);
 app.get(
   '/api/docs',
