@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
+      VITE_GA_ENABLED: "false"
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:

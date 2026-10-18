@@ -303,3 +303,21 @@
 - 패키지 감사: 기존 Vitest 계열 3건(moderate 1, critical 2). 자동 해결이 major 변경을 요구해 이번 API 문서화 범위에 포함하지 않음; 별도 테스트 도구 업그레이드 필요.
 - 운영 배포·푸시·PR 생성·DB 변경·Collector 변경은 수행하지 않음. MCP 구현은 후속 단계.
 - 최종 검증: 전체 브라우저 테스트10개 및 API Worker Wrangler dry-run 통과. 운영 업로드는 수행하지 않음.
+
+### 2026-10-18 — 방문·좋아요 배포 승인
+- 사용자: Today·좋아요 먼저, GA4 나중에. 이번 기능만 DB/Worker 설정 포함 배포 승인.
+- 별도 main 기반 체크아웃에서 변경 분리. 타입·46개 테스트·빌드 통과. 운영 반영 전.
+
+## 2026-10-18 운영 배포 완료
+
+- 승인: Today·좋아요·동의 기능과 DB/Worker 설정 포함. GA4는 비활성.
+- 코드 커밋: `fc5bade`, PR https://github.com/farfromseoul/AI-News-Crawler/pull/12 (열림, main 미병합).
+- 배포: https://github.com/farfromseoul/AI-News-Crawler/actions/runs/39087647508 성공.
+- 운영: https://ai-signal.negroism.workers.dev/
+- D1 0005 migration 적용 성공. API 버전 `134f6210-3238-41a0-a663-a55b709b21bd`.
+- CI: 타입·테스트46개·브라우저12개·빌드 성공.
+- 운영 health/stats, 외부 Origin 차단, 동의 false 거부, 쿠키 재인식, 좋아요 저장·중복방지·취소 확인. 테스트 좋아요 취소 완료. 동의한 방문 등록은 운영에서 실행하지 않아 테스트 방문수는 추가하지 않음.
+- 운영 Today 초기값0 정상. 브라우저 기준·분석 동의 사용자만 집계. GA4 실제 수신은 비활성/미확인.
+- 기존 수집기 코드·시간표 변경 없음. 기존 workflow로 Collector도 재배포됨.
+- 원본 작업 폴더 소스 보존. 분리 체크아웃: `/Users/allnewjh/projects/ai-signal-engagement-release`.
+- 후속: PR 검토·main 병합, GA4 활성화 시 안내/동의 버전 갱신, 수동 보존기간 정리.

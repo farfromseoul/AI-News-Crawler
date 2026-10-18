@@ -1,3 +1,4 @@
+import { EngagementProvider } from './engagement/Engagement';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
@@ -6,6 +7,6 @@ import './discovery.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <EngagementProvider><App /></EngagementProvider>
   </React.StrictMode>,
 );
