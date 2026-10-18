@@ -24,3 +24,17 @@
 GA4 활성화 시 설명과 동의 정책 버전을 갱신해 다시 동의를 받는다. 실제 Google 수신은 미확인/비활성이다.
 방문 기록 정리는 ENGAGEMENT_INSTALL의 SQL을 운영자가 실행한다. 자동 정리 작업은 이번 범위에 없다.
 오류 시 ENGAGEMENT_ENABLED=false로 기능을 닫고 기존 앱을 유지한다. 테이블 자동 삭제는 하지 않는다.
+
+## 2026-10-18 운영 배포 완료
+
+- 승인: Today·좋아요·동의 기능과 DB/Worker 설정 포함. GA4는 비활성.
+- 코드 커밋: `fc5bade`, PR https://github.com/farfromseoul/AI-News-Crawler/pull/12 (열림, main 미병합).
+- 배포: https://github.com/farfromseoul/AI-News-Crawler/actions/runs/39087647508 성공.
+- 운영: https://ai-signal.negroism.workers.dev/
+- D1 0005 migration 적용 성공. API 버전 `134f6210-3238-41a0-a663-a55b709b21bd`.
+- CI: 타입·테스트46개·브라우저12개·빌드 성공.
+- 운영 health/stats, 외부 Origin 차단, 동의 false 거부, 쿠키 재인식, 좋아요 저장·중복방지·취소 확인. 테스트 좋아요 취소 완료. 동의한 방문 등록은 운영에서 실행하지 않아 테스트 방문수는 추가하지 않음.
+- 운영 Today 초기값0 정상. 브라우저 기준·분석 동의 사용자만 집계. GA4 실제 수신은 비활성/미확인.
+- 기존 수집기 코드·시간표 변경 없음. 기존 workflow로 Collector도 재배포됨.
+- 원본 작업 폴더 소스 보존. 분리 체크아웃: `/Users/allnewjh/projects/ai-signal-engagement-release`.
+- 후속: PR 검토·main 병합, GA4 활성화 시 안내/동의 버전 갱신, 수동 보존기간 정리.
